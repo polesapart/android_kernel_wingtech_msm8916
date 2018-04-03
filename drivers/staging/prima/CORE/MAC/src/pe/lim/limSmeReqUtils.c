@@ -336,7 +336,8 @@ limSetRSNieWPAiefromSmeStartBSSReqMessage(tpAniSirGlobal pMac,
                    LOG1,
                    FL("Only RSN IE is present"));
             status = dot11fUnpackIeRSN(pMac,&pRSNie->rsnIEdata[2],
-                              (tANI_U8)pRSNie->length,&pSessionEntry->gStartBssRSNIe);
+                              pRSNie->rsnIEdata[1],
+                              &pSessionEntry->gStartBssRSNIe);
             if (DOT11F_FAILED(status))
             {
                 limLog(pMac,
@@ -353,7 +354,8 @@ limSetRSNieWPAiefromSmeStartBSSReqMessage(tpAniSirGlobal pMac,
                    LOG1,
                    FL("Only WPA IE is present"));
 
-            status = dot11fUnpackIeWPA(pMac,&pRSNie->rsnIEdata[6],(tANI_U8)pRSNie->length-4,
+            status = dot11fUnpackIeWPA(pMac,&pRSNie->rsnIEdata[6],
+                                pRSNie->rsnIEdata[1] - 4,
                                 &pSessionEntry->gStartBssWPAIe);
             if (DOT11F_FAILED(status))
             {
@@ -389,7 +391,8 @@ limSetRSNieWPAiefromSmeStartBSSReqMessage(tpAniSirGlobal pMac,
             {
                 /* Both RSN and WPA IEs are present */
                 status = dot11fUnpackIeRSN(pMac,&pRSNie->rsnIEdata[2],
-                      (tANI_U8)pRSNie->length,&pSessionEntry->gStartBssRSNIe);
+                      pRSNie->rsnIEdata[1],
+                      &pSessionEntry->gStartBssRSNIe);
                 if (DOT11F_FAILED(status))
                 {
                     limLog(pMac,LOGE,FL("unpack failed for RSN IE status:(0x%08x)"),
