@@ -1971,8 +1971,13 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 
 	if (motg->cur_power == mA)
 		return;
-
-	dev_info(motg->phy.dev, "Avail curr from USB = %u\n", mA);
+	if (mA > 0 && mA < IDEV_ACA_CHG_MAX) {
+		dev_info(motg->phy.dev, "Avail curr from USB = %u, bumping to %u",
+			 mA, IDEV_ACA_CHG_MAX);
+		mA = IDEV_ACA_CHG_MAX;
+	} else {
+		dev_info(motg->phy.dev, "Avail curr from USB = %u\n", mA);
+	}
 	msm_otg_dbg_log_event(&motg->phy, "AVAIL CURR FROM USB",
 			mA, motg->chg_type);
 
