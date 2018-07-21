@@ -5,7 +5,7 @@
 # EDIFY properties
 kernel.string=PolesApart™ Kernel by PolesApart @ xda-developers
 do.devicecheck=0
-do.initd=1
+do.initd=0
 do.modules=0
 do.cleanup=1
 device.name1=wt88047
@@ -33,8 +33,14 @@ chmod -R 755 $ramdisk
 dump_boot;
 
 # begin ramdisk changes
-
-
+mount -o rw,remount -t auto /system
+insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=536870912,max_comp_streams=2"
+insert_line /system/vendor/etc/init/hw/init.target.rc "on init" before "on boot" "on init"
+insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "on init" " write /sys/block/zram0/comp_algorithm lz4"
+insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "write /sys/block/zram0" " write /proc/sys/vm/page-cluster 0\n"
+insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" before "on property:sys.ims.QMI_DAEMON_STATUS=1" "on property:sys.boot_completed=1"
+insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "boot_completed=1" "  swapon_all /system/vendor/etc/fstab.qcom\n"
+mount -o ro,remount -t auto /system
 # end ramdisk changes
 
 write_boot;
