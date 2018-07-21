@@ -5,7 +5,7 @@
 # EDIFY properties
 kernel.string=PolesApart™ Kernel by PolesApart @ xda-developers
 do.devicecheck=0
-do.initd=1
+do.initd=0
 do.modules=0
 do.cleanup=1
 device.name1=wt88047
