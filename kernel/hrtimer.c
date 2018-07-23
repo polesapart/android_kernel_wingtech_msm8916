@@ -333,12 +333,15 @@ EXPORT_SYMBOL_GPL(ktime_sub_ns);
 /*
  * Divide a ktime value by a nanosecond value
  */
-u64 ktime_divns(const ktime_t kt, s64 div)
+s64 __ktime_divns(const ktime_t kt, s64 div)
 {
-	u64 dclc;
-	int sft = 0;
+	s64 dclc;
+	int neg, sft = 0;
 
 	dclc = ktime_to_ns(kt);
+	neg = (dclc < 0);
+	if (neg)
+		dclc = -dclc;
 	/* Make sure the divisor is less than 2^32: */
 	while (div >> 32) {
 		sft++;
@@ -346,9 +349,12 @@ u64 ktime_divns(const ktime_t kt, s64 div)
 	}
 	dclc >>= sft;
 	do_div(dclc, (unsigned long) div);
+	if (neg)
+		dclc = -dclc;
 
 	return dclc;
 }
+EXPORT_SYMBOL_GPL(__ktime_divns);
 #endif /* BITS_PER_LONG >= 64 */
 
 /*
