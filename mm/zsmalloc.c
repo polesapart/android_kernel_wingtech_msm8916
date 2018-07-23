@@ -412,7 +412,7 @@ static void get_zspage_mapping(struct page *first_page,
 				enum fullness_group *fullness)
 {
 	unsigned long m;
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	m = (unsigned long)first_page->mapping;
 	*fullness = m & FULLNESS_MASK;
@@ -424,7 +424,7 @@ static void set_zspage_mapping(struct page *first_page,
 				enum fullness_group fullness)
 {
 	unsigned long m;
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	m = ((class_idx & CLASS_IDX_MASK) << FULLNESS_BITS) |
 			(fullness & FULLNESS_MASK);
@@ -626,7 +626,7 @@ static enum fullness_group get_fullness_group(struct page *first_page)
 	int inuse, max_objects;
 	enum fullness_group fg;
 
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	inuse = first_page->inuse;
 	max_objects = first_page->objects;
@@ -655,7 +655,7 @@ static void insert_zspage(struct size_class *class,
 {
 	struct page **head;
 
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	if (fullness >= _ZS_NR_FULLNESS_GROUPS)
 		return;
@@ -688,13 +688,13 @@ static void remove_zspage(struct size_class *class,
 {
 	struct page **head;
 
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	if (fullness >= _ZS_NR_FULLNESS_GROUPS)
 		return;
 
 	head = &class->fullness_list[fullness];
-	VM_BUG_ON_PAGE(!*head, first_page);
+	VM_BUG_ON(!*head);
 	if (list_empty(&(*head)->lru))
 		*head = NULL;
 	else if (*head == first_page)
@@ -839,7 +839,7 @@ static unsigned long obj_to_head(struct size_class *class, struct page *page,
 			void *obj)
 {
 	if (class->huge) {
-		VM_BUG_ON_PAGE(!is_first_page(page), page);
+		VM_BUG_ON(!is_first_page(page));
 		return page_private(page);
 	} else
 		return *(unsigned long *)obj;
@@ -889,8 +889,8 @@ static void free_zspage(struct page *first_page)
 {
 	struct page *nextp, *tmp, *head_extra;
 
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
-	VM_BUG_ON_PAGE(first_page->inuse, first_page);
+	VM_BUG_ON(!is_first_page(first_page));
+	VM_BUG_ON(first_page->inuse);
 
 	head_extra = (struct page *)page_private(first_page);
 
@@ -916,7 +916,7 @@ static void init_zspage(struct size_class *class, struct page *first_page)
 	unsigned long off = 0;
 	struct page *page = first_page;
 
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	while (page) {
 		struct page *next_page;
@@ -1234,7 +1234,7 @@ static bool can_merge(struct size_class *prev, int size, int pages_per_zspage)
 
 static bool zspage_full(struct page *first_page)
 {
-	VM_BUG_ON_PAGE(!is_first_page(first_page), first_page);
+	VM_BUG_ON(!is_first_page(first_page));
 
 	return first_page->inuse == first_page->objects;
 }
