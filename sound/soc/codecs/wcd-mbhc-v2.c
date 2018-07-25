@@ -895,7 +895,7 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 		if (!(hs_comp_res))
 			pr_debug("%s: Special headset detected in %d msecs\n",
 					__func__, (delay * 2));
-		if (delay == SPECIAL_HS_DETECT_TIME_MS) {
+		if (delay == 500) {
 			pr_debug("%s: Spl headset didnt get detect in 4 sec\n",
 					__func__);
 			break;
@@ -1194,6 +1194,7 @@ correct_plug_type:
 			pr_debug("%s: cable is extension cable\n", __func__);
 			plug_type = MBHC_PLUG_TYPE_HIGH_HPH;
 			wrk_complete = true;
+			break;
 		} else {
 			pr_debug("%s: cable might be headset: %d\n", __func__,
 					plug_type);
