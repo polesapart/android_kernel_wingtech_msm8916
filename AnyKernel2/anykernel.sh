@@ -34,7 +34,7 @@ dump_boot;
 
 # begin ramdisk changes
 mount -o rw,remount -t auto /system
-insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=536870912,max_comp_streams=2"
+insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=536870912"
 insert_line /system/vendor/etc/init/hw/init.target.rc "on init" before "on boot" "on init"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "on init" " write /sys/block/zram0/comp_algorithm lz4"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "write /sys/block/zram0" " write /proc/sys/vm/page-cluster 0\n"
