@@ -42,11 +42,11 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/initval.h>
-
+#include <linux/spinlock.h>
 #include <trace/events/asoc.h>
 
 #define DAPM_UPDATE_STAT(widget, val) widget->dapm->card->dapm_stats.val++;
-
+static DEFINE_SPINLOCK(soc_list_lock);
 /* dapm power sequences - make this per codec in the future */
 static int dapm_up_seq[] = {
 	[snd_soc_dapm_pre] = 0,
@@ -142,7 +142,9 @@ void dapm_mark_dirty(struct snd_soc_dapm_widget *w, const char *reason)
 	if (!dapm_dirty_widget(w)) {
 		dev_vdbg(w->dapm->dev, "Marking %s dirty due to %s\n",
 			 w->name, reason);
+		spin_lock(&soc_list_lock);
 		list_add_tail(&w->dirty, &w->dapm->card->dapm_dirty);
+		spin_unlock(&soc_list_lock);
 	}
 }
 EXPORT_SYMBOL_GPL(dapm_mark_dirty);

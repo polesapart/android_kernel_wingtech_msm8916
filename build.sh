@@ -34,6 +34,7 @@ nocol='\033[0m'
 #export SUBARCH=arm
 #make wt88047_defconfig
 set -x -e
+rm -f .version # Since this annoys people with OCD
 make -j8
 
 $DTBTOOL -2 -o $KERNEL_DIR/arch/arm/boot/dt.img -s 2048 -p $KERNEL_DIR/scripts/dtc/ $KERNEL_DIR/arch/arm/boot/dts/

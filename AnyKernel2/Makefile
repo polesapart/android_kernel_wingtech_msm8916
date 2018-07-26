@@ -1,10 +1,11 @@
-NAME ?= PolesApart-los15.1-wt88047
+NAME ?= PolesApart-mdroid-wt88047
+
 
 DATE := $(shell date +'%Y%m%d-%H%M')
 
 ZIP := $(NAME)-$(DATE).zip
 
-EXCLUDE := Makefile *.git*
+EXCLUDE := Makefile *.git* *.zip *.sha1
 
 all: $(ZIP)
 

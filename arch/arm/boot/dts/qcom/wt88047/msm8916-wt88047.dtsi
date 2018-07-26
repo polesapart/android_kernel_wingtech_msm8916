@@ -196,6 +196,8 @@
 
 &dsi_r61308_720p_video {
 	qcom,cont-splash-enabled;
+	qcom,mdss-dsi-lp11-init;
+	qcom,mdss-dsi-init-delay-us = <200>;
 };
 
 &dsi_otm1285a_otp_720p_video {

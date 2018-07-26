@@ -189,7 +189,8 @@ static int yas_enable(struct yas_state *st)
 		mutex_lock(&st->lock);
 		st->mag.set_enable(1);
 		mutex_unlock(&st->lock);
-		schedule_delayed_work(&st->work, 0);
+		queue_delayed_work(system_power_efficient_wq,
+				   &st->work, 0);
 	}
 	return 0;
 }
@@ -541,7 +542,8 @@ static void yas_work_func(struct work_struct *work)
 	poll_delay = poll_delay - (time_after - time_before);
 	if (poll_delay <= 0)
 		poll_delay = 1;
-	schedule_delayed_work(&st->work, msecs_to_jiffies(poll_delay));
+	queue_delayed_work(system_power_efficient_wq,
+			   &st->work, msecs_to_jiffies(poll_delay));
 }
 
 static int yas_enable_set(struct sensors_classdev *sensors_cdev,
@@ -982,7 +984,8 @@ static int yas_resume(struct device *dev)
 	pdata = pdev_data->platform_data;
 	if (atomic_read(&pdev_data->enable)) {
 		pdev_data->mag.set_enable(1);
-		schedule_delayed_work(&pdev_data->work, 0);
+		queue_delayed_work(system_power_efficient_wq,
+				   &pdev_data->work, 0);
 	}
 
 	if (pdata->power_on)

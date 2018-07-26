@@ -1161,5 +1161,6 @@ config TOUCHSCREEN_IT7260_I2C
 
 config WAKE_GESTURES
 	bool "wake gestures"
+	default y
 
 endif

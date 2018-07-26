@@ -10,6 +10,9 @@
 #include "cpupri.h"
 #include "cpuacct.h"
 
+/* task_struct::on_rq states: */
+#define TASK_ON_RQ_MIGRATING	2
+
 extern __read_mostly int scheduler_running;
 
 /*
@@ -29,6 +32,13 @@ extern __read_mostly int scheduler_running;
 #define USER_PRIO(p)		((p)-MAX_RT_PRIO)
 #define TASK_USER_PRIO(p)	USER_PRIO((p)->static_prio)
 #define MAX_USER_PRIO		(USER_PRIO(MAX_PRIO))
+
+struct freq_max_load {
+	struct rcu_head rcu;
+	u32 freqs[0];
+};
+
+extern DEFINE_PER_CPU(struct freq_max_load *, freq_max_load);
 
 /*
  * Helpers for converting nanosecond timing to jiffy resolution
@@ -214,7 +224,7 @@ extern void init_cfs_bandwidth(struct cfs_bandwidth *cfs_b);
 extern int sched_group_set_shares(struct task_group *tg, unsigned long shares);
 
 extern void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b);
-extern void __start_cfs_bandwidth(struct cfs_bandwidth *cfs_b);
+extern void __start_cfs_bandwidth(struct cfs_bandwidth *cfs_b, bool force);
 extern void unthrottle_cfs_rq(struct cfs_rq *cfs_rq);
 
 extern void free_rt_sched_group(struct task_group *tg);
@@ -507,6 +517,8 @@ struct rq {
 #ifdef CONFIG_SCHED_FREQ_INPUT
 	u64 curr_runnable_sum;
 	u64 prev_runnable_sum;
+	u64 nt_curr_runnable_sum;
+	u64 nt_prev_runnable_sum;
 #endif
 
 #ifdef CONFIG_SCHED_HMP
@@ -544,6 +556,7 @@ struct rq {
 
 	/* sys_sched_yield() stats */
 	unsigned int yld_count;
+	unsigned int yield_sleep_count;
 
 	/* schedule() stats */
 	unsigned int sched_count;
@@ -620,6 +633,7 @@ static inline struct sched_domain *highest_flag_domain(int cpu, int flag)
 }
 
 DECLARE_PER_CPU(struct sched_domain *, sd_llc);
+DECLARE_PER_CPU(int, sd_llc_size);
 DECLARE_PER_CPU(int, sd_llc_id);
 
 struct sched_group_power {
@@ -741,8 +755,10 @@ static inline u64 scale_load_to_cpu(u64 task_load, int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
 
-	task_load *= (u64)rq->load_scale_factor;
-	task_load /= 1024;
+	if (rq->load_scale_factor != 1024) {
+		task_load *= (u64)rq->load_scale_factor;
+		task_load /= 1024;
+	}
 
 	return task_load;
 }
@@ -859,7 +875,6 @@ static inline void clear_reserved(int cpu)
 }
 
 extern unsigned int sched_enable_hmp;
-extern unsigned int sched_enable_power_aware;
 
 int mostly_idle_cpu(int cpu);
 extern void check_for_migration(struct rq *rq, struct task_struct *p);
@@ -874,7 +889,7 @@ extern void boost_kick(int cpu);
 
 #else /* CONFIG_SCHED_HMP */
 
-#define sched_enable_hmp 0
+#define sched_enable_hmp 1
 #define sched_freq_legacy_mode 1
 
 static inline void check_for_migration(struct rq *rq, struct task_struct *p) { }
@@ -1059,6 +1074,11 @@ static inline int task_running(struct rq *rq, struct task_struct *p)
 }
 
 
+static inline int task_on_rq_migrating(struct task_struct *p)
+{
+	return p->on_rq == TASK_ON_RQ_MIGRATING;
+}
+
 #ifndef prepare_arch_switch
 # define prepare_arch_switch(next)	do { } while (0)
 #endif
@@ -1222,8 +1242,10 @@ static const u32 prio_to_wmult[40] = {
 #else
 #define ENQUEUE_WAKING		0
 #endif
+#define ENQUEUE_MIGRATING	8
 
 #define DEQUEUE_SLEEP		1
+#define DEQUEUE_MIGRATING	2
 
 struct sched_class {
 	const struct sched_class *next;
@@ -1373,6 +1395,8 @@ extern void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags);
 extern const_debug unsigned int sysctl_sched_time_avg;
 extern const_debug unsigned int sysctl_sched_nr_migrate;
 extern const_debug unsigned int sysctl_sched_migration_cost;
+extern const_debug unsigned int sysctl_sched_yield_sleep_duration;
+extern const_debug int sysctl_sched_yield_sleep_threshold;
 
 static inline u64 sched_avg_period(void)
 {

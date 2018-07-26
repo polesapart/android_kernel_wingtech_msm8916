@@ -29,6 +29,7 @@
 #include <linux/ip.h>
 #include <linux/audit.h>
 #include <linux/ipv6.h>
+#include <linux/moduleparam.h>
 #include <net/ipv6.h>
 #include "avc.h"
 #include "avc_ss.h"
@@ -43,6 +44,9 @@
 #else
 #define avc_cache_stats_incr(field)	do {} while (0)
 #endif
+
+bool force_audit = false;
+module_param(force_audit, bool, 0644);
 
 struct avc_entry {
 	u32			ssid;
@@ -745,6 +749,10 @@ noinline int slow_avc_audit(u32 ssid, u32 tsid, u16 tclass,
 	struct common_audit_data stack_data;
 	struct selinux_audit_data sad;
 
+	/* Only log permissive=1 messages for SECURITY_SELINUX_DEVELOP */
+	if (denied && !result)
+		return 0;
+
 	if (!a) {
 		a = &stack_data;
 		a->type = LSM_AUDIT_DATA_NONE;
@@ -801,11 +809,6 @@ int __init avc_add_callback(int (*callback)(u32 event), u32 events)
 	avc_callbacks = c;
 out:
 	return rc;
-}
-
-static inline int avc_sidcmp(u32 x, u32 y)
-{
-	return (x == y || x == SECSID_WILD || y == SECSID_WILD);
 }
 
 /**

@@ -24,6 +24,7 @@
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
+#include <linux/delay.h>
 
 /*
  * In the DEBUG case we are using the "NULL fastpath" for mutexes,
@@ -137,8 +138,8 @@ void mspin_lock(struct mspin_node **lock, struct mspin_node *node)
 	ACCESS_ONCE(prev->next) = node;
 	smp_wmb();
 	/* Wait until the lock holder passes the lock down */
-	while (!ACCESS_ONCE(node->locked))
-		arch_mutex_cpu_relax();
+	while (!cpu_relaxed_read(&(node->locked)))
+		cpu_read_relax();
 }
 
 static void mspin_unlock(struct mspin_node **lock, struct mspin_node *node)
@@ -152,8 +153,8 @@ static void mspin_unlock(struct mspin_node **lock, struct mspin_node *node)
 		if (cmpxchg(lock, node, NULL) == node)
 			return;
 		/* Wait until the next pointer is set */
-		while (!(next = ACCESS_ONCE(node->next)))
-			arch_mutex_cpu_relax();
+		while (!(next = (struct mspin_node*)(cpu_relaxed_read_long(&(node->next)))))
+			cpu_read_relax();
 	}
 	ACCESS_ONCE(next->locked) = 1;
 	smp_wmb();
@@ -335,6 +336,17 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 		 * values at the cost of a few extra spins.
 		 */
 		arch_mutex_cpu_relax();
+
+                /*
+                 * On arm systems, we must slow down the waiter's repeated
+                 * aquisition of spin_mlock and atomics on the lock count, or
+                 * we risk starving out a thread attempting to release the
+                 * mutex. The mutex slowpath release must take spin lock
+                 * wait_lock. This spin lock can share a monitor with the
+                 * other waiter atomics in the mutex data structure, so must
+                 * take care to rate limit the waiters.
+                 */
+                udelay(1);
 	}
 slowpath:
 #endif

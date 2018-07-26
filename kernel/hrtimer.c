@@ -230,7 +230,7 @@ again:
 		 * completed. There is no conflict as we hold the lock until
 		 * the timer is enqueued.
 		 */
-		if (unlikely(hrtimer_callback_running(timer)))
+		if (unlikely(hrtimer_callback_running_relaxed(timer)))
 			return base;
 
 		/* See the comment in lock_timer_base() */
@@ -333,12 +333,15 @@ EXPORT_SYMBOL_GPL(ktime_sub_ns);
 /*
  * Divide a ktime value by a nanosecond value
  */
-u64 ktime_divns(const ktime_t kt, s64 div)
+s64 __ktime_divns(const ktime_t kt, s64 div)
 {
-	u64 dclc;
-	int sft = 0;
+	s64 dclc;
+	int neg, sft = 0;
 
 	dclc = ktime_to_ns(kt);
+	neg = (dclc < 0);
+	if (neg)
+		dclc = -dclc;
 	/* Make sure the divisor is less than 2^32: */
 	while (div >> 32) {
 		sft++;
@@ -346,9 +349,12 @@ u64 ktime_divns(const ktime_t kt, s64 div)
 	}
 	dclc >>= sft;
 	do_div(dclc, (unsigned long) div);
+	if (neg)
+		dclc = -dclc;
 
 	return dclc;
 }
+EXPORT_SYMBOL_GPL(__ktime_divns);
 #endif /* BITS_PER_LONG >= 64 */
 
 /*
@@ -655,7 +661,7 @@ static int hrtimer_reprogram(struct hrtimer *timer,
 	 * reprogramming is handled either by the softirq, which called the
 	 * callback or at the end of the hrtimer_interrupt.
 	 */
-	if (hrtimer_callback_running(timer))
+	if (hrtimer_callback_running_relaxed(timer))
 		return 0;
 
 	/*
@@ -1107,7 +1113,7 @@ int hrtimer_try_to_cancel(struct hrtimer *timer)
 
 	base = lock_hrtimer_base(timer, &flags);
 
-	if (!hrtimer_callback_running(timer))
+	if (!hrtimer_callback_running_relaxed(timer))
 		ret = remove_hrtimer(timer, base);
 
 	unlock_hrtimer_base(timer, &flags);
@@ -1673,7 +1679,7 @@ static void migrate_hrtimer_list(struct hrtimer_clock_base *old_base,
 
 	while ((node = timerqueue_getnext(&old_base->active))) {
 		timer = container_of(node, struct hrtimer, node);
-		BUG_ON(hrtimer_callback_running(timer));
+		BUG_ON(hrtimer_callback_running_relaxed(timer));
 		debug_deactivate(timer);
 
 		/*
