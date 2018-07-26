@@ -1,5 +1,6 @@
 NAME ?= PolesApart-mdroid-wt88047
 
+
 DATE := $(shell date +'%Y%m%d-%H%M')
 
 ZIP := $(NAME)-$(DATE).zip
