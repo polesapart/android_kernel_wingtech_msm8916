@@ -32,7 +32,7 @@
 #define YL_PARAM_BUF_SZ		512
 #endif
 
-#define ALARM_DELTA 120
+#define ALARM_DELTA 240
 
 /**
  * struct alarm_base - Alarm timer bases
