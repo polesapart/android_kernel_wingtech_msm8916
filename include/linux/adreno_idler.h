@@ -1,17 +1,14 @@
-/*
- * include/linux/display_state.h
- *
- * Copyright (c) 2016 Francisco Franco
- * franciscofranco.1990@gmail.com
+/* Header File for Adreno IDLER v1.1 Driver.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ *
  */
 
-#ifndef _LINUX_DISPLAY_STATE_H
-#define _LINUX_DISPLAY_STATE_H
+#ifndef __LINUX_ADRENO_IDLER_H
+#define __LINUX_ADRENO_IDLER_H
 
-bool is_display_on(void);
-
+extern bool adreno_idler_active;
+		  
 #endif
