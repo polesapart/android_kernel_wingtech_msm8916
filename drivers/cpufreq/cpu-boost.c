@@ -42,12 +42,12 @@ static struct work_struct input_boost_work;
 static struct notifier_block notif;
 #endif
 
-static bool input_boost_enabled = 1;
+static bool input_boost_enabled;
 
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
 
-static bool sched_boost_on_input = 1;
+static bool sched_boost_on_input;
 module_param(sched_boost_on_input, bool, 0644);
 
 static bool sched_boost_active;
@@ -55,7 +55,7 @@ static bool sched_boost_active;
 static bool hotplug_boost;
 module_param(hotplug_boost, bool, 0644);
 
-bool wakeup_boost = 1;
+bool wakeup_boost;
 module_param(wakeup_boost, bool, 0644);
 
 static struct delayed_work input_boost_rem;
