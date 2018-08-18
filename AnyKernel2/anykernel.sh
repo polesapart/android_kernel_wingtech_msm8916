@@ -40,6 +40,7 @@ insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "write /sys/block/zram0" " write /proc/sys/vm/page-cluster 0\n"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" before "on property:sys.ims.QMI_DAEMON_STATUS=1" "on property:sys.boot_completed=1"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "boot_completed=1" "  swapon_all /system/vendor/etc/fstab.qcom\n"
+replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "scaling_min_freq 200000" "scaling_min_freq 800000" "scaling_min_freq 200000"
 mount -o ro,remount -t auto /system
 # end ramdisk changes
 
