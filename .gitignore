@@ -97,3 +97,5 @@ smd_rpc_sym.c
 AnyKernel2/*.zip*
 AnyKernel2/dtb
 AnyKernel2/zImage
+nbproject
+arch/arm/boot/dt.img
