@@ -47,7 +47,7 @@ struct ps_thre {
 	int th_hi;
 	int th_lo;
 };
-static struct ps_thre psthre_data[] = {
+static const struct ps_thre psthre_data[] = {
 	{50,  20,  12},
 	{100, 24,  16},
 	{200, 40,  30},
@@ -125,7 +125,7 @@ static int ltr559_als_set_enable(struct sensors_classdev *sensors_cdev,
 		unsigned int enable);
 static int ltr559_ps_set_enable(struct sensors_classdev *sensors_cdev,
 		unsigned int enable);
-static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cdev);
+static ssize_t ltr559_ps_dynamic_calibrate(struct sensors_classdev *sensors_cdev);
 
 static  struct ltr559_reg reg_tbl[] = {
 		{
@@ -328,7 +328,7 @@ static int ltr559_ps_enable(struct i2c_client *client, int on)
 		msleep(WAKEUP_DELAY);
 
 		data->ps_state = 1;
-		ltr559_ps_dynamic_caliberate(&data->ps_cdev);
+		ltr559_ps_dynamic_calibrate(&data->ps_cdev);
 		printk("%s, report ABS_DISTANCE=%s\n",__func__, data->ps_state ? "far" : "near");
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
 	} else {
@@ -813,7 +813,7 @@ static int ltr559_als_poll_delay(struct sensors_classdev *sensors_cdev,
 	return 0;
 }
 
-static ssize_t ltr559_ps_dynamic_caliberate(struct sensors_classdev *sensors_cdev)
+static ssize_t ltr559_ps_dynamic_calibrate(struct sensors_classdev *sensors_cdev)
 {
 	struct ltr559_data *data = container_of(sensors_cdev, struct ltr559_data, ps_cdev);
 	struct ltr559_platform_data *pdata = data->platform_data;
@@ -958,7 +958,7 @@ static int ltr559_check_chip_id(struct i2c_client *client)
 	return 0;
 }
 
-int ltr559_device_init(struct i2c_client *client)
+static int ltr559_device_init(struct i2c_client *client)
 {
 	int retval = 0;
 	int i;
@@ -1220,7 +1220,7 @@ static int ltr559_parse_dt(struct device *dev, struct ltr559_data *data)
 	return 0;
 }
 
-int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int ltr559_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct ltr559_data *data;
