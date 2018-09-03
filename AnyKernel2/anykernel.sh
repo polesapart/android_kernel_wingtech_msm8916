@@ -31,7 +31,6 @@ chmod -R 755 $ramdisk
 
 ## AnyKernel install
 dump_boot;
-
 # begin ramdisk changes
 mount -o rw,remount -t auto /system
 insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=536870912"
@@ -41,6 +40,10 @@ insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" before "on property:sys.ims.QMI_DAEMON_STATUS=1" "on property:sys.boot_completed=1"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "boot_completed=1" "  swapon_all /system/vendor/etc/fstab.qcom\n"
 replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "scaling_min_freq 200000" "scaling_min_freq 800000" "scaling_min_freq 200000"
+replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "target_loads \"50 " "target_loads.*$" "target_loads \"50 400000:55 533333:60 800000:65 998400:70 1094400:80 11520000:90\""
+replace_file /system/vendor/etc/wifi/WCNSS_qcom_cfg.ini 644 WCNSS_qcom_cfg-prima.ini
+replace_file /system/vendor/firmware/wlan/prima/WCNSS_qcom_wlan_nv.bin 644 WCNSS_qcom_wlan_nv.bin
+replace_file /system/vendor/firmware/wlan/prima/WCNSS_cfg.dat 644 WCNSS_cfg.dat
 mount -o ro,remount -t auto /system
 # end ramdisk changes
 
