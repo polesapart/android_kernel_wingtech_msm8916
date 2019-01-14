@@ -36,11 +36,6 @@
 #define MSM8X16_TOMBAK_LPASS_DIGCODEC_CBCR			0x0181C0B0
 #define MSM8X16_TOMBAK_LPASS_DIGCODEC_AHB_CBCR			0x0181C0B4
 
-#ifdef CONFIG_MACH_WT88047
-#define EXT_SPK_AMP_GPIO	(902+117)
-#define EXT_SPK_AMP_HEADSET_GPIO	(902+8)
-#endif
-
 #define MSM8X16_CODEC_NAME "msm8x16_wcd_codec"
 
 #define MSM8X16_WCD_IS_DIGITAL_REG(reg) \
@@ -223,6 +218,7 @@ struct msm8916_asoc_mach_data {
 	int ext_spk_amp_gpio;
 #endif
 	int spk_ext_pa_gpio;
+	int hs_ext_pa_gpio;
 	int mclk_freq;
 	int lb_mode;
 	u8 micbias1_cap_mode;
@@ -309,6 +305,7 @@ struct msm8x16_wcd_priv {
 	struct fw_info *fw_data;
 	struct blocking_notifier_head notifier;
 	int (*codec_spk_ext_pa_cb)(struct snd_soc_codec *codec, int enable);
+	int (*codec_hs_ext_pa_cb)(struct snd_soc_codec *codec, int enable);
 	unsigned long status_mask;
 	struct wcd_imped_i_ref imped_i_ref;
 	enum wcd_mbhc_imp_det_pin imped_det_pin;
@@ -322,12 +319,11 @@ extern int msm8x16_wcd_hs_detect(struct snd_soc_codec *codec,
 
 extern void msm8x16_wcd_hs_detect_exit(struct snd_soc_codec *codec);
 
-#ifdef CONFIG_MACH_WT88047
-extern int msm8x16_wcd_restart_mbhc(struct snd_soc_codec *codec);
-#endif
-
 extern void msm8x16_wcd_spk_ext_pa_cb(
 		int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,
+		int enable), struct snd_soc_codec *codec);
+extern void msm8x16_wcd_hs_ext_pa_cb(
+		int (*codec_hs_ext_pa)(struct snd_soc_codec *codec,
 		int enable), struct snd_soc_codec *codec);
 #endif
 

@@ -32,7 +32,6 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/sched.h>
-#include <linux/switch.h>
 #include <sound/q6afe-v2.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -40,7 +39,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
 #include <sound/q6core.h>
-#include <sound/jack.h>
 #include <soc/qcom/subsystem_notif.h>
 #include "msm8x16-wcd.h"
 #include "wcd-mbhc-v2.h"
@@ -133,12 +131,6 @@ enum {
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
 static struct snd_soc_dai_driver msm8x16_wcd_i2s_dai[];
-
-#ifdef CONFIG_MACH_WT88047
-static struct switch_dev accdet_data;
-static int accdet_state;
-static struct delayed_work analog_switch_enable;
-#endif
 
 #define MSM8X16_WCD_ACQUIRE_LOCK(x) \
 	mutex_lock_nested(&x, SINGLE_DEPTH_NESTING);
@@ -450,6 +442,16 @@ void msm8x16_wcd_spk_ext_pa_cb(
 
 	pr_debug("%s: Enter\n", __func__);
 	msm8x16_wcd->codec_spk_ext_pa_cb = codec_spk_ext_pa;
+}
+
+void msm8x16_wcd_hs_ext_pa_cb(
+		int (*codec_hs_ext_pa)(struct snd_soc_codec *codec,
+			int enable), struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	pr_debug("%s: Enter\n", __func__);
+	msm8x16_wcd->codec_hs_ext_pa_cb = codec_hs_ext_pa;
 }
 
 static void msm8x16_wcd_compute_impedance(struct snd_soc_codec *codec, s16 l,
@@ -2860,6 +2862,10 @@ static const struct soc_enum iir2_inp1_mux_enum =
 static const struct snd_kcontrol_new ext_spk_mux =
 	SOC_DAPM_ENUM_VIRT("Ext Spk Switch Mux", ext_spk_enum);
 
+/* kumajaya: Use the same ext_spk_enum */
+static const struct snd_kcontrol_new ext_hs_mux =
+	SOC_DAPM_ENUM_VIRT("Ext Headset Switch Mux", ext_spk_enum);
+
 static const struct snd_kcontrol_new rx_mix1_inp1_mux =
 	SOC_DAPM_ENUM("RX1 MIX1 INP1 Mux", rx_mix1_inp1_chain_enum);
 
@@ -4118,64 +4124,11 @@ static int enable_ext_spk(struct snd_soc_dapm_widget *w, bool enable)
 }
 #endif
 
-#ifdef CONFIG_MACH_WT88047
-static void msm8x16_analog_switch_delayed_enable(struct work_struct *work)
-{
-	int state = 0;
-
-	state = gpio_get_value(EXT_SPK_AMP_GPIO);
-	pr_debug("%s: Enable analog switch, external PA state: %d\n", __func__, state);
-
-	if (!state)
-		gpio_direction_output(EXT_SPK_AMP_HEADSET_GPIO, true);
-}
-
-void msm8x16_wcd_codec_set_headset_state(u32 state)
-{
-	switch_set_state((struct switch_dev *)&accdet_data, state);
-	accdet_state = state;
-}
-
-int msm8x16_wcd_codec_get_headset_state(void)
-{
-	pr_debug("%s accdet_state = %d\n", __func__, accdet_state);
-	return accdet_state;
-}
-
-static void enable_ldo17(int enable)
-{
-	static struct regulator *reg_l17;
-	static int status;
-	int rc = 0;
-
-	if (!!status == !!enable)
-		return;
-
-	if (enable)
-		reg_l17 = regulator_get(0, "8916_l17");
-	if (reg_l17 != 0) {
-		if (enable) {
-			regulator_set_optimum_mode(reg_l17, 100*1000);
-			regulator_set_voltage(reg_l17, 2850000, 2850000);
-			rc = regulator_enable(reg_l17);
-		} else {
-			rc = regulator_disable(reg_l17);
-			regulator_put(reg_l17);
-			reg_l17 = 0;
-		}
-		status = enable;
-	}
-}
-#endif
-
 static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
-#ifdef CONFIG_MACH_WT88047
-	int state = 0;
-#endif
 
 	dev_dbg(codec->dev, "%s: %s event = %d\n", __func__, w->name, event);
 
@@ -4192,10 +4145,6 @@ static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_POST_PMU:
-#ifdef CONFIG_MACH_WT88047
-		enable_ldo17(1);
-		state = msm8x16_wcd_codec_get_headset_state();
-#endif
 		usleep_range(7000, 7100);
 		if (w->shift == 5) {
 			snd_soc_update_bits(codec,
@@ -4211,13 +4160,6 @@ static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 			enable_ext_spk(w, true);
 #endif
 		}
-#ifdef CONFIG_MACH_WT88047
-		usleep_range(10000, 10100);
-		if (!state)
-			gpio_direction_output(EXT_SPK_AMP_HEADSET_GPIO, false);
-		else
-			schedule_delayed_work(&analog_switch_enable, msecs_to_jiffies(500));
-#endif
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -4270,9 +4212,6 @@ static int msm8x16_wcd_hph_pa_event(struct snd_soc_dapm_widget *w,
 			"%s: sleep 10 ms after %s PA disable.\n", __func__,
 			w->name);
 		usleep_range(10000, 10100);
-#ifdef CONFIG_MACH_WT88047
-		enable_ldo17(0);
-#endif
 		break;
 	}
 	return 0;
@@ -4317,6 +4256,10 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Ext Spk", NULL, "Ext Spk Switch"},
 	{"Ext Spk Switch", "On", "HPHL PA"},
 	{"Ext Spk Switch", "On", "HPHR PA"},
+
+	{"Ext Headset", NULL, "Ext Headset Switch"},
+	{"Ext Headset Switch", "On", "HPHL PA"},
+	{"Ext Headset Switch", "On", "HPHR PA"},
 
 	{"HPHL PA", NULL, "HPHL"},
 	{"HPHR PA", NULL, "HPHR"},
@@ -4782,6 +4725,32 @@ static int msm8x16_wcd_codec_enable_spk_ext_pa(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int msm8x16_wcd_codec_enable_hs_ext_pa(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	dev_dbg(codec->dev, "%s: %s event = %d\n", __func__, w->name, event);
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		dev_dbg(w->codec->dev,
+			"%s: enable external headset PA\n", __func__);
+		if (msm8x16_wcd->codec_hs_ext_pa_cb) {
+			msm8x16_wcd->codec_hs_ext_pa_cb(codec, 1);
+		}
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		dev_dbg(w->codec->dev,
+			"%s: enable external headset PA\n", __func__);
+		if (msm8x16_wcd->codec_hs_ext_pa_cb) {
+			msm8x16_wcd->codec_hs_ext_pa_cb(codec, 0);
+		}
+		break;
+	}
+	return 0;
+}
+
 static int msm8x16_wcd_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -4867,6 +4836,8 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SPK("Ext Spk", msm8x16_wcd_codec_enable_spk_ext_pa),
 
+	SND_SOC_DAPM_SPK("Ext Headset", msm8x16_wcd_codec_enable_hs_ext_pa),
+
 	SND_SOC_DAPM_OUTPUT("HEADPHONE"),
 	SND_SOC_DAPM_PGA_E("HPHL PA", MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN,
 		5, 0, NULL, 0,
@@ -4915,6 +4886,9 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 
 	SND_SOC_DAPM_VIRT_MUX("Ext Spk Switch", SND_SOC_NOPM, 0, 0,
 		&ext_spk_mux),
+
+	SND_SOC_DAPM_VIRT_MUX("Ext Headset Switch", SND_SOC_NOPM, 0, 0,
+		&ext_hs_mux),
 
 	SND_SOC_DAPM_MIXER("RX1 MIX1", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("RX2 MIX1", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -5649,18 +5623,6 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 	wcd_mbhc_init(&msm8x16_wcd_priv->mbhc, codec, &mbhc_cb, &intr_ids,
 		      wcd_mbhc_registers, true);
 
-#ifdef CONFIG_MACH_WT88047
-	accdet_data.name = "h2w";
-	accdet_data.index = 0;
-	accdet_data.state = 0;
-
-	ret = switch_dev_register(&accdet_data);
-	if (ret) {
-		dev_err(codec->dev, "%s: Failed to register h2w\n", __func__);
-		return -ENOMEM;
-	}
-#endif
-
 	msm8x16_wcd_priv->mclk_enabled = false;
 	msm8x16_wcd_priv->clock_active = false;
 	msm8x16_wcd_priv->config_mode_active = false;
@@ -5683,9 +5645,6 @@ static int msm8x16_wcd_codec_probe(struct snd_soc_codec *codec)
 		registered_codec = NULL;
 		return -ENOMEM;
 	}
-#ifdef CONFIG_MACH_WT88047
-	INIT_DELAYED_WORK(&analog_switch_enable, msm8x16_analog_switch_delayed_enable);
-#endif
 	return 0;
 }
 
@@ -6103,43 +6062,6 @@ static void msm8x16_wcd_device_exit(struct msm8x16_wcd *msm8x16)
 	mutex_destroy(&msm8x16->io_lock);
 	kfree(msm8x16);
 }
-
-#ifdef CONFIG_MACH_WT88047
-int msm8x16_wcd_restart_mbhc(struct snd_soc_codec *codec)
-{
-	struct msm8x16_wcd_priv *msm8x16_wcd_priv =
-		snd_soc_codec_get_drvdata(codec);
-	int ret = 0;
-	bool detection_type;
-	u32 jack_mask = SND_JACK_HEADSET | SND_JACK_OC_HPHL |
-			SND_JACK_OC_HPHR | SND_JACK_LINEOUT |
-			SND_JACK_UNSUPPORTED;
-	/* Read mbhc reg if set for insert or remove and
-	set to corresponding detection type on restart */
-	detection_type = (snd_soc_read(codec,
-				MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1)) & 0x20;
-	if (!detection_type)
-		snd_soc_jack_report_no_dapm(
-				&msm8x16_wcd_priv->mbhc.headset_jack,
-				0, jack_mask);
-	wcd_mbhc_stop(&msm8x16_wcd_priv->mbhc);
-	wcd_mbhc_deinit(&msm8x16_wcd_priv->mbhc);
-	ret = wcd_mbhc_init(&msm8x16_wcd_priv->mbhc, codec, &mbhc_cb, &intr_ids,
-			wcd_mbhc_registers, true);
-
-	if (ret)
-		dev_err(codec->dev, "%s: mbhc initialization failed\n",
-				__func__);
-	else
-		wcd_mbhc_start(&msm8x16_wcd_priv->mbhc,
-				msm8x16_wcd_priv->mbhc.mbhc_cfg);
-	/* Set the detection type appropriately */
-	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1,
-			0x20, (!detection_type << 5));
-	return 0;
-}
-EXPORT_SYMBOL(msm8x16_wcd_restart_mbhc);
-#endif
 
 static int msm8x16_wcd_spmi_remove(struct spmi_device *spmi)
 {
