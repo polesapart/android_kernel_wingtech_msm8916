@@ -41,7 +41,10 @@ insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" before "on property:sys.ims.QMI_DAEMON_STATUS=1" "on property:sys.boot_completed=1"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "boot_completed=1" "  swapon_all /system/vendor/etc/fstab.qcom\n"
 replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "scaling_min_freq 533333" "scaling_min_freq.*$" "scaling_min_freq 533333"
-replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "target_loads \"5 " "target_loads.*$" "target_loads \"5 800000:65 998400:70 1094400:80\""
+replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "hispeed_freq 1094400" "hispeed_freq.*$" "hispeed_freq 1094400"
+#replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "offline_delay_ms 100" "offline_delay_ms.*$" "offline_delay_ms 100"
+replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "target_loads \"2 " "target_loads.*$" "target_loads \"1 533333:15 800000:70 998400:80 1094400:90\""
+replace_file /system/vendor/etc/mixer_paths_qrd_skui.xml 644 mixer_paths.xml
 replace_file /system/vendor/etc/wifi/WCNSS_qcom_cfg.ini 644 WCNSS_qcom_cfg-prima.ini
 #replace_file /system/vendor/firmware/wlan/prima/WCNSS_qcom_wlan_nv.bin 644 WCNSS_qcom_wlan_nv.bin
 #replace_file /system/vendor/firmware/wlan/prima/WCNSS_cfg.dat 644 WCNSS_cfg.dat
