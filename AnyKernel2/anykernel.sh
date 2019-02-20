@@ -34,13 +34,14 @@ chmod -R 755 $ramdisk
 dump_boot;
 # begin ramdisk changes
 mount -o rw,remount -t auto /system
-insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=402653184"
+insert_line /system/vendor/etc/fstab.qcom "zram0" after "do specify MF_CHECK" "/dev/block/zram0\tnone\tswap\tdefaults\tzramsize=268435456"
+replace_string /system/vendor/etc/fstab.qcom "zramsize=268435456" "zramsize=.*$" "zramsize=268435456"
 insert_line /system/vendor/etc/init/hw/init.target.rc "on init" before "on boot" "on init"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "on init" " write /sys/block/zram0/comp_algorithm lz4"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "write /sys/block/zram0" " write /proc/sys/vm/page-cluster 0\n"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" before "on property:sys.ims.QMI_DAEMON_STATUS=1" "on property:sys.boot_completed=1"
 insert_line /system/vendor/etc/init/hw/init.target.rc "/system/vendor/etc/fstab.qcom" after "boot_completed=1" "  swapon_all /system/vendor/etc/fstab.qcom\n"
-replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "scaling_min_freq 533333" "scaling_min_freq.*$" "scaling_min_freq 533333"
+replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "scaling_min_freq 200000" "scaling_min_freq.*$" "scaling_min_freq 200000"
 replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "hispeed_freq 1094400" "hispeed_freq.*$" "hispeed_freq 1094400"
 #replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "offline_delay_ms 100" "offline_delay_ms.*$" "offline_delay_ms 100"
 replace_string /system/vendor/etc/init/hw/init.qcom.power.rc "target_loads \"2 " "target_loads.*$" "target_loads \"1 533333:15 800000:70 998400:80 1094400:90\""
