@@ -3,7 +3,7 @@
  * FocalTech ft5x06 TouchScreen driver.
  *
  * Copyright (c) 2010  Focal tech Ltd.
- * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -255,6 +255,7 @@ struct ft5x06_ts_data {
 	u8 family_id;
 	struct dentry *dir;
 	u16 addr;
+	bool keypad_mode;
 	bool suspended;
 	char *ts_info;
 	u8 *tch_data;
@@ -262,6 +263,7 @@ struct ft5x06_ts_data {
 	u8 fw_ver[3];
 	u8 fw_vendor_id;
 #if defined(CONFIG_FB)
+	struct work_struct fb_notify_work;
 	struct notifier_block fb_notif;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	struct early_suspend early_suspend;
@@ -772,6 +774,9 @@ static irqreturn_t ft5x06_ts_interrupt(int irq, void *dev_id)
 
 		/* invalid combination */
 		if (!num_touches && !status && !id)
+			break;
+
+		if (y == 1344 && data->keypad_mode)
 			break;
 
 #ifdef CONFIG_WAKE_GESTURES
@@ -1349,7 +1354,13 @@ static int ft5x06_ts_resume(struct device *dev)
 #endif
 
 #if defined(CONFIG_FB)
-static bool unblanked_once = false;
+static void fb_notify_resume_work(struct work_struct *work)
+{
+	struct ft5x06_ts_data *ft5x06_data =
+		container_of(work, struct ft5x06_ts_data, fb_notify_work);
+	ft5x06_ts_resume(&ft5x06_data->client->dev);
+}
+
 static int fb_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data)
 {
@@ -1358,15 +1369,26 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct ft5x06_ts_data *ft5x06_data =
 		container_of(self, struct ft5x06_ts_data, fb_notif);
 
-	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
-			ft5x06_data && ft5x06_data->client) {
+	if (evdata && evdata->data && ft5x06_data && ft5x06_data->client) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
-			if (unblanked_once)
-				ft5x06_ts_resume(&ft5x06_data->client->dev);
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			unblanked_once = true;
-			ft5x06_ts_suspend(&ft5x06_data->client->dev);
+		if (ft5x06_data->pdata->resume_in_workqueue) {
+			if (event == FB_EARLY_EVENT_BLANK &&
+						 *blank == FB_BLANK_UNBLANK)
+				schedule_work(&ft5x06_data->fb_notify_work);
+			else if (event == FB_EVENT_BLANK &&
+						 *blank == FB_BLANK_POWERDOWN) {
+				flush_work(&ft5x06_data->fb_notify_work);
+				ft5x06_ts_suspend(&ft5x06_data->client->dev);
+			}
+		} else {
+			if (event == FB_EVENT_BLANK) {
+				if (*blank == FB_BLANK_UNBLANK)
+					ft5x06_ts_resume(
+						&ft5x06_data->client->dev);
+				else if (*blank == FB_BLANK_POWERDOWN)
+					ft5x06_ts_suspend(
+						&ft5x06_data->client->dev);
+			}
 		}
 	}
 
@@ -1808,6 +1830,45 @@ static ssize_t ft5x06_fw_name_store(struct device *dev,
 
 static DEVICE_ATTR(fw_name, 0664, ft5x06_fw_name_show, ft5x06_fw_name_store);
 
+static ssize_t ft5x06_keypad_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+	int count;
+	char c = data->keypad_mode ? '0' : '1';
+
+	count = sprintf(buf, "%c\n", c);
+
+	return count;
+}
+
+static ssize_t ft5x06_keypad_mode_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
+	int i;
+
+	if (sscanf(buf, "%u", &i) == 1 && i < 2) {
+		data->keypad_mode = (i == 0);
+		return count;
+	} else {
+		dev_dbg(dev, "keypad_mode write error\n");
+		return -EINVAL;
+	}
+}
+
+static DEVICE_ATTR(keypad_mode, S_IWUSR | S_IRUSR, ft5x06_keypad_mode_show,
+		   ft5x06_keypad_mode_store);
+
+static struct attribute *ft5x06_ts_attrs[] = {
+	&dev_attr_keypad_mode.attr,
+	NULL
+};
+
+static const struct attribute_group ft5x06_ts_attr_group = {
+	.attrs = ft5x06_ts_attrs,
+};
+
 static bool ft5x06_debug_addr_is_valid(int addr)
 {
 	if (addr < 0 || addr > 0xFF) {
@@ -2116,6 +2177,9 @@ static int ft5x06_parse_dt(struct device *dev,
 
 	pdata->gesture_support = of_property_read_bool(np,
 						"focaltech,gesture-support");
+
+	pdata->resume_in_workqueue = of_property_read_bool(np,
+					"focaltech,resume-in-workqueue");
 
 	rc = of_property_read_u32(np, "focaltech,family-id", &temp_val);
 	if (!rc)
@@ -2448,6 +2512,12 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 		goto free_update_fw_sys;
 	}
 
+	 err = sysfs_create_group(&client->dev.kobj, &ft5x06_ts_attr_group);
+	 if (err) {
+		dev_err(&client->dev, "Failure %d creating sysfs group\n",err);
+		goto free_gpio;
+    }
+
 	data->dir = debugfs_create_dir(FT_DEBUG_DIR_NAME, NULL);
 	if (data->dir == NULL || IS_ERR(data->dir)) {
 		pr_err("debugfs_create_dir failed(%ld)\n", PTR_ERR(data->dir));
@@ -2519,6 +2589,7 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 			data->fw_ver[1], data->fw_ver[2]);
 
 #if defined(CONFIG_FB)
+	INIT_WORK(&data->fb_notify_work, fb_notify_resume_work);
 	data->fb_notif.notifier_call = fb_notifier_callback;
 
 	err = fb_register_client(&data->fb_notif);
@@ -2680,6 +2751,7 @@ static int ft5x06_ts_remove(struct i2c_client *client)
 		ft5x06_power_init(data, false);
 
 	input_unregister_device(data->input_dev);
+	sysfs_remove_group(&client->dev.kobj, &ft5x06_ts_attr_group);
 
 	return 0;
 }

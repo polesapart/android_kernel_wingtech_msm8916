@@ -1,4 +1,4 @@
-NAME ?= PolesApart-mdroid-wt88047
+NAME ?= PolesApart-los17-wt88047
 
 
 DATE := $(shell date +'%Y%m%d-%H%M')
