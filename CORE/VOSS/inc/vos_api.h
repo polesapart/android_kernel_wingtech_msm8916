@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, 2020 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -74,7 +74,7 @@
 #include <vos_threads.h>
 #include <vos_timer.h>
 #include <vos_pack_align.h>
-
+#include <asm/arch_timer.h>
 
 /**
  * enum log_event_type - Type of event initiating bug report
@@ -440,4 +440,17 @@ v_BOOL_t vos_isUnloadInProgress(void);
 v_BOOL_t vos_isLoadUnloadInProgress(void);
 
 void vos_probe_threads(void);
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+static inline uint64_t __vos_get_log_timestamp(void)
+{
+	return arch_counter_get_cntvct();
+}
+#else
+static inline uint64_t __vos_get_log_timestamp(void)
+{
+	return arch_counter_get_cntpct();
+}
+#endif /* LINUX_VERSION_CODE */
+
 #endif // if !defined __VOS_NVITEM_H
