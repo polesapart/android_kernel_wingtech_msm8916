@@ -17,7 +17,7 @@
  # Please maintain this if you use this script or any part of it
  #
 KERNEL_DIR=$PWD
-ZIP_DIR=$KERNEL_DIR/AnyKernel2
+ZIP_DIR=$KERNEL_DIR/AnyKernel3
 KERN_IMG=$KERNEL_DIR/arch/arm/boot/zImage
 DT_IMG=$KERNEL_DIR/arch/arm/boot/dt.img
 DTBTOOL=$KERNEL_DIR/tools/dtbToolCM

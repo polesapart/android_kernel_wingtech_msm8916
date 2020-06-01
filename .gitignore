@@ -94,8 +94,8 @@ x509.genkey
 
 # Generated source files
 smd_rpc_sym.c
-AnyKernel2/*.zip*
-AnyKernel2/dtb
-AnyKernel2/zImage
+AnyKernel3/*.zip*
+AnyKernel3/dtb
+AnyKernel3/zImage
 nbproject
 arch/arm/boot/dt.img
