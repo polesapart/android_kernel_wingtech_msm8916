@@ -82,8 +82,10 @@ static inline void qmp_sphinx_logk_recvfrom(int fd, void __user *ubuf,
 }
 
 static inline void qmp_sphinx_logk_oom_adjust_write(pid_t pid,
-					uid_t uid, int oom_adj)
+					kuid_t kuid, int oom_adj)
 {
+	uid_t uid;
+	uid = __kuid_val(kuid)
 	char *buf = NULL;
 	void *blck = NULL;
 
@@ -100,9 +102,11 @@ static inline void qmp_sphinx_logk_oom_adjust_write(pid_t pid,
 	qmp_sphinx_logk_kernel_end(blck);
 }
 
-static inline void qmp_sphinx_logk_oom_score_adj_write(pid_t pid, uid_t uid,
+static inline void qmp_sphinx_logk_oom_score_adj_write(pid_t pid, kuid_t kuid,
 					int oom_adj_score)
 {
+	uid_t uid;
+	uid = __kuid_val(kuid)
 	char *buf = NULL;
 	void *blck = NULL;
 
@@ -134,12 +138,12 @@ static inline void qmp_sphinx_logk_recvfrom
 }
 
 static inline void qmp_sphinx_logk_oom_adjust_write
-		(pid_t pid, uid_t uid, int oom_adj)
+		(pid_t pid, kuid_t kuid, int oom_adj)
 {
 }
 
 static inline void qmp_sphinx_logk_oom_score_adj_write
-		(pid_t pid, uid_t uid, int oom_adj_score)
+		(pid_t pid, kuid_t kuid, int oom_adj_score)
 {
 }
 #endif

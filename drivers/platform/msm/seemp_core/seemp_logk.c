@@ -129,7 +129,7 @@ void *seemp_logk_kernel_start_record(char **buf)
 	blk->version = OBSERVER_VERSION;
 	blk->pid = current->tgid;
 	blk->tid = current->pid;
-	blk->uid = current_uid();
+	blk->uid = __kuid_val(current_uid());
 	blk->sec = now.tv_sec;
 	blk->nsec = now.tv_nsec;
 	strlcpy(blk->appname, current->comm, TASK_COMM_LEN);
@@ -162,9 +162,9 @@ void seemp_logk_kernel_end_record(void *blck)
 			if (parsed_current_uid != -1)
 				blk->uid = parsed_current_uid;
 			else
-				blk->uid = current_uid;
+				blk->uid = __kuid_val(current_uid());
 		} else
-			blk->uid = current_uid;
+			blk->uid = __kuid_val(current_uid());
 
 		ringbuf_finish_writer(slogk_dev);
 	}
@@ -306,9 +306,9 @@ static int seemp_logk_usr_record(const char __user *buf, size_t count)
 		if (parsedcurrentuid != -EPERM)
 			blk->uid = parsedcurrentuid;
 		else
-			blk->uid = currentuid;
+			blk->uid = __kuid_val(current_uid());
 	} else
-		blk->uid = currentuid;
+		blk->uid = __kuid_val(current_uid());
 	blk->tid = usr_blk.tid;
 	blk->sec = now.tv_sec;
 	blk->nsec = now.tv_nsec;

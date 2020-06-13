@@ -288,3 +288,16 @@ int in_egroup_p(kgid_t grp)
 }
 
 EXPORT_SYMBOL(in_egroup_p);
+
+int in_egroup_p_old(gid_t grp)
+{
+	const struct cred *cred = current_cred();
+	int retval = 1;
+
+	if (grp != __kgid_val(cred->egid))
+		retval = groups_search(cred->group_info,
+				       make_kgid(cred->user_ns, grp));
+	return retval;
+}
+
+EXPORT_SYMBOL(in_egroup_p_old);

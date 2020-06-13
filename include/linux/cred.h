@@ -76,6 +76,7 @@ extern bool may_setgroups(void);
 
 extern int in_group_p(kgid_t);
 extern int in_egroup_p(kgid_t);
+extern int in_egroup_p_old(gid_t);
 
 /*
  * The security context of a task
